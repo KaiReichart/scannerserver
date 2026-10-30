@@ -54,6 +54,15 @@ run `avahi-daemon`; mounting the host's D-Bus system socket as shown above lets 
 container publish through it. Run only one Avahi daemon per host network namespace, so leave
 `SCAN_ENABLE_DISCOVERY_DAEMONS` off when the host already runs one.
 
+The host's D-Bus daemon refuses connections from a UID it cannot find in the host's
+`/etc/passwd`, which shows up in the log as `Failed to create client object: An unexpected D-Bus
+error occurred`. Make sure the container's UID (the `user:` value, `1000` above) exists on the
+host. Minimal hosts such as Proxmox LXCs often have only `root`; add a non-login system user:
+
+```bash
+useradd --system --uid 1000 --no-create-home --shell /usr/sbin/nologin scannerserver
+```
+
 Advertisement is best-effort: if Avahi is unavailable, the endpoints still work and a client can
 be pointed at them manually. For sane-airscan, add to `/etc/sane.d/airscan.conf`:
 
