@@ -204,6 +204,13 @@ persisted stores, reachability, and physical-button session state.
   waiting/running work, compact terminal
   history, and successful pages-per-minute measurements without exposing authentication or lease
   tokens.
+- `ESCLScanService` is the optional actor-isolated driverless-scanning (eSCL/AirScan) boundary,
+  enabled by `SCAN_ESCL_ENABLED`. It owns eSCL jobs, in-memory page buffers, and status, and runs
+  each acquisition through `ScanJobActor.start(trigger: .escl, operation:)` so eSCL scans share
+  single-flight admission and the physical-button session hand-off with web scans. It calls the
+  Wi-Fi acquirer directly with a page handler and publishes nothing to the scan directory.
+  `ESCLBonjourPublisher` advertises `_uscan._tcp` through `avahi-publish-service`. See
+  [`escl.md`](escl.md).
 - `OCRWorkerBonjourPublisher` optionally owns a cancellable `avahi-publish-service` subprocess for
   `_scannerserver._tcp`. The macOS worker uses Network.framework to browse compatible TXT records;
   an explicit server URL remains available and takes precedence over Bonjour.

@@ -139,6 +139,10 @@ execution failure retains local fallback; task cancellation does not fall back.
 | `SCAN_PDF_UPLOAD_MAX_BYTES` | `1073741824` | Maximum size of a PDF uploaded through the Documents page or OCR API |
 | `SCAN_OCR_API_TOKEN` | empty | Optional bearer token required by OCR API operations; leave empty only on a trusted network |
 | `SCAN_OCR_WORKER_BONJOUR_ENABLED` | `false` | Publish `_scannerserver._tcp` for OCR worker discovery through `avahi-publish-service` |
+| `SCAN_ESCL_ENABLED` | `false` | Expose the scanner as a driverless eSCL/AirScan scanner under `/eSCL`; see [`escl.md`](escl.md) |
+| `SCAN_ESCL_BONJOUR_ENABLED` | `true` | When eSCL is enabled, advertise `_uscan._tcp` through `avahi-publish-service` |
+| `SCAN_ESCL_NAME` | `ScanSnap iX500` | Scanner name shown by eSCL clients |
+| `SCAN_ESCL_UUID` | derived | Fixed eSCL device UUID; defaults to a stable value derived from the name and host name |
 | `SCANNERSERVER_BONJOUR_NAME` | `scannerserver` | Bonjour service instance name |
 | `SCANNERSERVER_BONJOUR_HOST` | process hostname | Host used to derive the advertised URL when no complete URL is configured |
 | `SCANNERSERVER_BONJOUR_URL` | derived HTTP URL | Complete LAN-reachable HTTP(S) URL placed in the Bonjour TXT record |

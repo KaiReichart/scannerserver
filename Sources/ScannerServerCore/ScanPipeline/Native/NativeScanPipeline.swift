@@ -380,59 +380,14 @@ public actor NativeScanPipeline: NativeScanExecuting {
             return imageResult.succeeded ? (nil, pages.count) : (imageResult, nil)
 
         case "wifi":
-            guard let scannerIP = nonEmpty(environment["SCANNER_IP"]) else {
-                throw NativeScanConfigurationError.message(
-                    "SCAN_BACKEND=wifi requires SCANNER_IP from the live scanner setup."
-                )
-            }
-            guard let pairingKey = nonEmpty(environment["SCAN_PAIRING_KEY"])
-                    ?? nonEmpty(environment["SCANSNAP_PAIRING_KEY"])
-            else {
-                throw NativeScanConfigurationError.message(
-                    "SCAN_BACKEND=wifi requires SCAN_PAIRING_KEY or SCANSNAP_PAIRING_KEY from the live scanner setup."
-                )
-            }
-
-            let clientIPAddress: String?
-            if let configured = nonEmpty(environment["SCANSNAP_CLIENT_IP"]) {
-                do {
-                    clientIPAddress = try ScannerConfig.normalizeIPv4Address(configured)
-                } catch {
-                    throw NativeScanConfigurationError.message(
-                        "Invalid SCANSNAP_CLIENT_IP: \(configured)"
-                    )
-                }
-            } else {
-                clientIPAddress = nil
-            }
-            let clientMACAddress: [UInt8]?
-            if let configured = nonEmpty(environment["SCANSNAP_CLIENT_MAC"]) {
-                do {
-                    clientMACAddress = try ScanSnapSetupEnvironmentConfiguration.macBytes(configured)
-                } catch {
-                    throw NativeScanConfigurationError.message(
-                        "Invalid SCANSNAP_CLIENT_MAC: \(configured)"
-                    )
-                }
-            } else {
-                clientMACAddress = nil
-            }
             let simplex = configuration.simplex
                 || configuration.source.contains("Simplex")
                 || configuration.source.contains("simplex")
-            let buttonConfiguration = ScanSnapButtonConfiguration(environment: environment)
-            let request = ScanSnapWiFiAcquisitionRequest(
-                scannerIPAddress: scannerIP,
-                identity: ScanSnapIdentity(pairingKey),
-                clientIPAddress: clientIPAddress,
-                clientMACAddress: clientMACAddress,
-                clientInterface: nonEmpty(environment["SCANSNAP_CLIENT_INTERFACE"]) ?? "eth0",
+            let request = try ScanSnapWiFiAcquisitionRequest(
+                scanEnvironment: environment,
                 simplex: simplex,
                 reusesArmedSession: acquisitionSessionMode == .reuseArmed,
-                debug: environment["SCAN_WIFI_DEBUG"] == "true",
-                outputURL: rawPDF,
-                registrationSourcePort: buttonConfiguration.registrationSourcePort,
-                registrationPort: buttonConfiguration.registrationPort
+                outputURL: rawPDF
             )
             let result: ScanSnapWiFiAcquisitionResult
             if let streamingBatchID, let ocrQueue {

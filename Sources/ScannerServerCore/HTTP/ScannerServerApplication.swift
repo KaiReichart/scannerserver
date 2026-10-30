@@ -210,6 +210,8 @@ public struct ScannerServerDependencies: Sendable {
     public let environment: [String: String]
     public let buttonConfigurationChanges: ScanSnapButtonConfigurationChangeCoordinator?
     public let scanDirectoryAccessIssue: ScanDirectoryAccessIssue?
+    /// Driverless (eSCL/AirScan) scanning, present only when `SCAN_ESCL_ENABLED` is set.
+    public let escl: ESCLScanService?
 
     public init(
         settingsStore: ScanSettingsStore,
@@ -228,7 +230,8 @@ public struct ScannerServerDependencies: Sendable {
         webUpdates: WebUpdateNotifier? = nil,
         scannerReachability: ScanSnapReachabilityState? = nil,
         environment: [String: String],
-        buttonConfigurationChanges: ScanSnapButtonConfigurationChangeCoordinator? = nil
+        buttonConfigurationChanges: ScanSnapButtonConfigurationChangeCoordinator? = nil,
+        escl: ESCLScanService? = nil
     ) {
         self.settingsStore = settingsStore
         self.scannerStore = scannerStore ?? ScannerConfigStore(environment: environment)
@@ -331,6 +334,18 @@ public struct ScannerServerDependencies: Sendable {
         self.scanDirectoryAccessIssue = ScanDirectoryAccessIssue.check(
             directory: outputPathResolver.outputDirectory
         )
+        if let escl {
+            self.escl = escl
+        } else {
+            let esclConfiguration = ESCLConfiguration(environment: environment)
+            self.escl = esclConfiguration.enabled
+                ? ESCLScanService(
+                    configuration: esclConfiguration,
+                    scanJobs: scanJobs,
+                    acquisitionSessions: scanSnapAcquisitionSessions
+                )
+                : nil
+        }
     }
 
     public static func live(
@@ -463,6 +478,7 @@ public enum ScannerServerApplication {
         let router = Router()
 
         registerOCRAPIRoutes(router, dependencies: dependencies)
+        registerESCLRoutes(router, dependencies: dependencies)
 
         router.get("/") { request, _ in
             await webPageResponse(

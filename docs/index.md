@@ -19,6 +19,7 @@ Use this page as the entry point for repository documentation. The root [`README
 | [`architecture.md`](architecture.md) | Current Swift architecture, scope guardrails, compatibility contracts, and validation | Maintainers and agents |
 | [`configuration.md`](configuration.md) | Environment variables, scan modes, output names, OCR, blank-page removal, and cropping | Operators |
 | [`ocr-api.md`](ocr-api.md) | OpenAPI-described PDF OCR jobs for LLM tools and service integrations | Integrators and operators |
+| [`escl.md`](escl.md) | Driverless eSCL/AirScan scanning for macOS Image Capture, Windows, iOS, and sane-airscan | Operators and maintainers |
 | [`ocr-workers.md`](ocr-workers.md) | Built-in and remote worker setup, registration, approval, scheduling, status, and protocol | Operators and maintainers |
 | [`deployment.md`](deployment.md) | Published images, host networking, Compose, local builds, and image publishing | Operators |
 | [`releasing.md`](releasing.md) | Release validation, version selection, Git tags, GitHub Releases, and GHCR verification | Maintainers |

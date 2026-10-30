@@ -20,7 +20,7 @@ document processing, and OCR stay on machines you operate.
 | Document processing | Automatic page cropping, configurable blank-page removal, previews, metadata, source-order assembly, and safe failure fallbacks |
 | Presets | Saved simplex/duplex modes with format, OCR language, crop, and blank-page settings |
 | OCR capacity | A configurable built-in worker with container-aware CPU scheduling and priority, plus optional approved Linux-container or native macOS workers with automatic local fallback |
-| Integrations | OpenAPI 3.1 job API returning searchable PDFs or UTF-8 text, with optional bearer authentication |
+| Integrations | OpenAPI 3.1 job API returning searchable PDFs or UTF-8 text, with optional bearer authentication, and optional driverless eSCL/AirScan scanning for macOS Image Capture, Windows, iOS, and sane-airscan ([`docs/escl.md`](docs/escl.md)) |
 | Operations | Browser status and worker controls, cancellation, throughput history, atomic file publication, persistent settings, health/version endpoints, and arbitrary host UID/GID support |
 
 The normal deployment needs no proprietary desktop ScanSnap software, Docker socket, privileged

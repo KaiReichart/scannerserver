@@ -4,12 +4,14 @@ import JLog
 public enum ScanJobTrigger: Sendable, Hashable {
     case web
     case scannerButton
+    case escl
     case unspecified
 
     init(environmentValue: String?) {
         switch environmentValue {
         case "web": self = .web
         case "button": self = .scannerButton
+        case "escl": self = .escl
         default: self = .unspecified
         }
     }
@@ -37,6 +39,20 @@ public struct ScanJobState: Equatable, Sendable {
         self.started = started
         self.finished = finished
         self.status = status
+        self.output = output
+        self.error = error
+    }
+}
+
+/// Outcome of an acquisition that runs through `ScanJobActor.start(trigger:operation:)` instead of
+/// the native document pipeline. It produces no published outputs and schedules no queue work.
+public struct ScanJobOperationResult: Equatable, Sendable {
+    public var succeeded: Bool
+    public var output: String
+    public var error: String
+
+    public init(succeeded: Bool, output: String = "", error: String = "") {
+        self.succeeded = succeeded
         self.output = output
         self.error = error
     }
@@ -110,6 +126,32 @@ public actor ScanJobActor {
         return true
     }
 
+    /// Runs a caller-owned acquisition under the same single-flight guard and lifecycle events as
+    /// pipeline scans, so the physical-button session is handed off before it starts and resumed or
+    /// recovered after it finishes. Returns `false` without running `operation` while busy.
+    @discardableResult
+    public func start(
+        trigger: ScanJobTrigger,
+        operation: @escaping @Sendable () async throws -> ScanJobOperationResult
+    ) async -> Bool {
+        guard worker == nil, jobState.status != "running" else { return false }
+
+        jobState = ScanJobState(started: Date(), status: "running")
+        await publish(.started(trigger: trigger))
+        worker = Task {
+            do {
+                let result = try await operation()
+                await finish(operationResult: result)
+            } catch is CancellationError {
+                await finishCancellation()
+            } catch {
+                await finish(error: error)
+            }
+        }
+        await webUpdates.notify()
+        return true
+    }
+
     public func waitUntilIdle() async {
         let currentWorker = worker
         await currentWorker?.value
@@ -173,6 +215,20 @@ public actor ScanJobActor {
                     )
                 }
             }
+        }
+        worker = nil
+        await publish(.finished(succeeded: result.succeeded))
+        await webUpdates.notify()
+    }
+
+    private func finish(operationResult result: ScanJobOperationResult) async {
+        jobState.finished = Date()
+        jobState.status = result.succeeded ? "done" : "failed"
+        jobState.output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        jobState.error = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !result.succeeded {
+            let diagnostic = jobState.error.isEmpty ? "No diagnostic output." : jobState.error
+            JLog.warning("Scan failed: \(diagnostic)")
         }
         worker = nil
         await publish(.finished(succeeded: result.succeeded))

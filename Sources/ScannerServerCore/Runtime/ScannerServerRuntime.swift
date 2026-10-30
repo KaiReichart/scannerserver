@@ -5,15 +5,18 @@ public actor ScannerServerRuntime {
     public nonisolated let dependencies: ScannerServerDependencies
     private let buttonRuntime: (any ScanSnapButtonRuntimeControlling)?
     private let ocrWorkerBonjourPublisher: OCRWorkerBonjourPublisher?
+    private let esclBonjourPublisher: ESCLBonjourPublisher?
 
     public init(
         dependencies: ScannerServerDependencies,
         buttonRuntime: (any ScanSnapButtonRuntimeControlling)? = nil,
-        ocrWorkerBonjourPublisher: OCRWorkerBonjourPublisher? = nil
+        ocrWorkerBonjourPublisher: OCRWorkerBonjourPublisher? = nil,
+        esclBonjourPublisher: ESCLBonjourPublisher? = nil
     ) {
         self.dependencies = dependencies
         self.buttonRuntime = buttonRuntime
         self.ocrWorkerBonjourPublisher = ocrWorkerBonjourPublisher
+        self.esclBonjourPublisher = esclBonjourPublisher
     }
 
     public static func live(
@@ -32,7 +35,10 @@ public actor ScannerServerRuntime {
         return ScannerServerRuntime(
             dependencies: dependencies,
             buttonRuntime: buttonRuntime,
-            ocrWorkerBonjourPublisher: OCRWorkerBonjourPublisher(environment: environment)
+            ocrWorkerBonjourPublisher: OCRWorkerBonjourPublisher(environment: environment),
+            esclBonjourPublisher: dependencies.escl.map {
+                ESCLBonjourPublisher(configuration: $0.configuration)
+            }
         )
     }
 
@@ -59,6 +65,7 @@ public actor ScannerServerRuntime {
         }
         await startButtonRuntime()
         await ocrWorkerBonjourPublisher?.start(serviceConfiguration: configuration)
+        await esclBonjourPublisher?.start(serviceConfiguration: configuration)
         do {
             try await application.runService()
         } catch {
@@ -78,6 +85,7 @@ public actor ScannerServerRuntime {
 
     public func shutdown() async {
         await ocrWorkerBonjourPublisher?.stop()
+        await esclBonjourPublisher?.stop()
         await buttonRuntime?.stop()
         await dependencies.scannerSetup.shutdown()
         await dependencies.scanJobs.cancel()
