@@ -1,10 +1,23 @@
 import Foundation
 
-public enum ScanSnapButtonArmingError: Error, Sendable, Equatable {
+public enum ScanSnapButtonArmingError: Error, Sendable, Equatable, LocalizedError {
     case pairingRejected(ScanSnapPairingStatus)
     case invalidResponseLength(Int)
     case invalidResponseSignature
     case timedOut(milliseconds: UInt64)
+
+    public var errorDescription: String? {
+        switch self {
+        case .pairingRejected(let status):
+            "Scanner rejected registration (\(status), error \(status.code))."
+        case .invalidResponseLength(let length):
+            "Scanner returned a \(length)-byte registration response."
+        case .invalidResponseSignature:
+            "Scanner returned a registration response without the VENS signature."
+        case .timedOut(let milliseconds):
+            "Scanner registration timed out after \(milliseconds) ms."
+        }
+    }
 }
 
 public struct ScanSnapButtonSessionArmer: ScanSnapButtonArming {

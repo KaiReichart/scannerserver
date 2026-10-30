@@ -214,6 +214,12 @@ Trying to start acquisition with another full UDP registration and TCP pairing s
 duplicates the existing ownership claim and the iX500 rejects it with status `-7`
 (`pairedToDifferentClientIP`)—even when both attempts use the same IP and MAC address.
 
+Because the scanner keys that reservation only on client IP, MAC, and fixed ports, a restarted
+service process is rejected with `-7` by its own previous session. Arming therefore treats `-7` as
+"the scanner still holds this client's session": it adopts the session, resumes the heartbeat, and
+lets the next scan reuse it, the same way a button notice during recovery reclaims it. Other
+rejection statuses still leave the session unarmed.
+
 Every scan start now performs an explicit one-shot session handoff:
 
 1. Stop the 500 ms heartbeat while acquisition owns the scanner.

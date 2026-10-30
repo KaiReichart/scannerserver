@@ -236,6 +236,39 @@ func successfulScanResumesHandedOffSession() async {
     #expect(await lifecycle.state.isArmed)
 }
 
+@Test("A -7 rejection after a service restart adopts the scanner's retained session")
+func pairedToDifferentClientIPAdoptsRetainedSession() async {
+    let reachability = ButtonFakeReachability([true])
+    let armer = ButtonFakeArmer(behavior: .rejectAsPairedToDifferentClientIP)
+    let heartbeat = ButtonFakeHeartbeat()
+    let lifecycle = makeLifecycle(reachability: reachability, armer: armer, heartbeat: heartbeat)
+
+    await lifecycle.runMaintenance(atMilliseconds: 1_000)
+
+    #expect(await eventually { await lifecycle.state.isArmed })
+    #expect(await armer.calls.count == 1)
+    #expect(await heartbeat.startCalls.count == 1)
+    // A web or eSCL scan now reuses the adopted session instead of registering again.
+    #expect(await lifecycle.scanDidStart())
+    #expect(await armer.releaseCalls.count == 1)
+}
+
+@Test("Other registration failures still leave the button session unarmed")
+func otherArmingFailuresStayUnarmed() async {
+    let reachability = ButtonFakeReachability([true])
+    let armer = ButtonFakeArmer(behavior: .fail)
+    let heartbeat = ButtonFakeHeartbeat()
+    let lifecycle = makeLifecycle(reachability: reachability, armer: armer, heartbeat: heartbeat)
+
+    await lifecycle.runMaintenance(atMilliseconds: 1_000)
+
+    #expect(await eventually { await armer.calls.count == 1 })
+    #expect(await eventually { !(await lifecycle.state.isArming) })
+    #expect(!(await lifecycle.state.isArmed))
+    #expect(await heartbeat.startCalls.isEmpty)
+    #expect(!(await lifecycle.scanDidStart()))
+}
+
 @Test("Full safety re-arm finalizes the retained button session first")
 func fullSafetyRearmFinalizesRetainedSession() async {
     let armer = ButtonFakeArmer()

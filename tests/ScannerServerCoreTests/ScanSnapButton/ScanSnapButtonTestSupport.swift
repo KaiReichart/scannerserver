@@ -114,6 +114,7 @@ actor ButtonFakeArmer: ScanSnapButtonArming {
     enum Behavior: Sendable {
         case succeed
         case fail
+        case rejectAsPairedToDifferentClientIP
         case waitForCancellation
     }
 
@@ -142,6 +143,8 @@ actor ButtonFakeArmer: ScanSnapButtonArming {
             return
         case .fail:
             throw ButtonFakeError.expected
+        case .rejectAsPairedToDifferentClientIP:
+            throw ScanSnapButtonArmingError.pairingRejected(.pairedToDifferentClientIP)
         case .waitForCancellation:
             do {
                 try await Task.sleep(for: .seconds(60))
@@ -162,6 +165,8 @@ actor ButtonFakeArmer: ScanSnapButtonArming {
             return
         case .fail:
             throw ButtonFakeError.expected
+        case .rejectAsPairedToDifferentClientIP:
+            throw ScanSnapButtonArmingError.pairingRejected(.pairedToDifferentClientIP)
         case .waitForCancellation:
             do {
                 try await Task.sleep(for: .seconds(60))

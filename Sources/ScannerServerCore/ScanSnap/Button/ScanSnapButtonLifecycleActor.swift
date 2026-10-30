@@ -734,30 +734,42 @@ public actor ScanSnapButtonLifecycleActor {
         let generation = armingGeneration
         let isRecovery = recoveryArmRequested
         armingTask = Task { [weak self, armer, configuration] in
-            let succeeded: Bool
+            let outcome: ArmingOutcome
             do {
                 if isRecovery {
                     try await armer.recoverAndArm(scanner: scanner, configuration: configuration)
                 } else {
                     try await armer.arm(scanner: scanner, configuration: configuration)
                 }
-                succeeded = true
+                outcome = .armed
             } catch is CancellationError {
-                succeeded = false
+                outcome = .failed
+            } catch ScanSnapButtonArmingError.pairingRejected(.pairedToDifferentClientIP) {
+                // The iX500 identifies a session only by client IP, MAC, and fixed ports, and it
+                // keeps that reservation after the client process goes away. A restarted service
+                // is therefore rejected with -7 by its own previous session. Adopt it instead of
+                // registering again, exactly as a button notice during recovery already does.
+                outcome = .adoptedExistingSession
             } catch {
                 JLog.warning("ScanSnap button \(isRecovery ? "recovery " : "")arming failed: \(error)")
-                succeeded = false
+                outcome = .failed
             }
             await self?.finishArming(
-                succeeded: succeeded,
+                outcome: outcome,
                 generation: generation,
                 lifecycleGeneration: lifecycleGeneration
             )
         }
     }
 
+    private enum ArmingOutcome {
+        case armed
+        case adoptedExistingSession
+        case failed
+    }
+
     private func finishArming(
-        succeeded: Bool,
+        outcome: ArmingOutcome,
         generation: UInt64,
         lifecycleGeneration: UInt64
     ) async {
@@ -766,6 +778,7 @@ public actor ScanSnapButtonLifecycleActor {
         guard isCurrentLifecycle(lifecycleGeneration), generation == armingGeneration else { return }
         armingTask = nil
         isArming = false
+        let succeeded = outcome != .failed
         isArmed = succeeded
         if succeeded {
             recoveryArmRequested = false
@@ -776,7 +789,13 @@ public actor ScanSnapButtonLifecycleActor {
             if let scanner = lastScannerConfiguration {
                 await heartbeat.start(scanner: scanner, configuration: configuration)
             }
-            JLog.notice("ScanSnap button client armed")
+            if outcome == .adoptedExistingSession {
+                JLog.notice(
+                    "ScanSnap button client armed by adopting the scanner's existing session for this client (registration returned -7)"
+                )
+            } else {
+                JLog.notice("ScanSnap button client armed")
+            }
         } else {
             nextArmAtMilliseconds = nil
             nextReachabilityAtMilliseconds = adding(configuration.reachabilityIntervalMilliseconds, to: now)

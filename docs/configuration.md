@@ -395,6 +395,13 @@ Expected recovery behavior:
    finalize and replace a healthy session after that idle interval. This is disabled by default
    because unnecessary fresh registrations can themselves produce `-7` and an unarmed interval.
 
+After a service or container restart, the scanner still holds the previous process's session for
+the same client IP and MAC and rejects a fresh registration with `-7`. The service adopts that
+session instead of retrying: the log shows `ScanSnap button client armed by adopting the scanner's
+existing session`, heartbeats resume, and the next scan reuses it without power-cycling the scanner.
+If a scan through an adopted session fails, the session really belongs to another client; power-cycle
+the scanner or repeat Network Setup.
+
 `scanner rejected registration (error -7)` immediately after a button notice means the scanner
 still considers a session owner active. If `ScanSnap button client armed` appeared first, the scan
 must reuse that armed session; a second UDP registration is a protocol error, not a recovery step.
