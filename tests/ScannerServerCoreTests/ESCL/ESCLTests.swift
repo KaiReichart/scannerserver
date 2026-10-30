@@ -95,6 +95,7 @@ struct ESCLDocumentTests {
         #expect(xml.contains("<pwg:SerialNumber>AWRHC08122 &amp; &lt;x&gt;</pwg:SerialNumber>"))
         #expect(xml.contains("<scan:AdminURI>http://scanner.local:8080/</scan:AdminURI>"))
         #expect(!xml.contains("Platen"))
+        #expect(!xml.contains("DetectPaperLoaded"))
     }
 
     @Test("Status lists jobs newest first with transfer counts")
@@ -211,7 +212,10 @@ struct ESCLRouteTests {
         try await fixture.application().test(.router) { client in
             try await client.execute(uri: "/eSCL/ScannerStatus", method: .get) { response in
                 #expect(response.status == .ok)
-                #expect(String(buffer: response.body).contains("<pwg:State>Idle</pwg:State>"))
+                let body = String(buffer: response.body)
+                #expect(body.contains("<pwg:State>Idle</pwg:State>"))
+                // Clients such as Image Capture refuse to scan unless the feeder reports paper.
+                #expect(body.contains("<scan:AdfState>ScannerAdfLoaded</scan:AdfState>"))
             }
 
             let absoluteLocation = try await client.execute(

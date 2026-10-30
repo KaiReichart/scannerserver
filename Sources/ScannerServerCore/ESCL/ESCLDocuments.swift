@@ -36,7 +36,6 @@ enum ESCLDocuments {
             </scan:AdfDuplexInputCaps>
             <scan:FeederCapacity>\(ESCLConfiguration.feederCapacity)</scan:FeederCapacity>
             <scan:AdfOptions>
-              <scan:AdfOption>DetectPaperLoaded</scan:AdfOption>
               <scan:AdfOption>Duplex</scan:AdfOption>
             </scan:AdfOptions>
           </scan:Adf>

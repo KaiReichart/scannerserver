@@ -10,6 +10,7 @@ public enum ESCLScannerState: String, Equatable, Sendable {
 public enum ESCLAdfState: String, Equatable, Sendable {
     case processing = "ScannerAdfProcessing"
     case empty = "ScannerAdfEmpty"
+    case loaded = "ScannerAdfLoaded"
 }
 
 public enum ESCLJobState: String, Equatable, Sendable {
@@ -101,7 +102,12 @@ public actor ESCLScanService {
     private var jobs: [String: Job] = [:]
     private var jobOrder: [String] = []
     private var activeJobID: String?
-    private var feederReportedEmpty = false
+    /// When the last acquisition found no paper. The iX500 cannot report its paper sensor without
+    /// taking over the button session, so idle status optimistically reports a loaded feeder and
+    /// reports it empty only briefly after a scan proved it, long enough for the client that
+    /// started the job to read it but not so long that clients refuse to start the next scan.
+    private var feederReportedEmptyAt: Date?
+    private static let emptyFeederReportWindow: TimeInterval = 15
 
     public init(
         configuration: ESCLConfiguration,
@@ -220,10 +226,11 @@ public actor ESCLScanService {
         let adfState: ESCLAdfState?
         if activeJobID != nil {
             adfState = .processing
-        } else if feederReportedEmpty {
+        } else if let reportedAt = feederReportedEmptyAt,
+                  Date().timeIntervalSince(reportedAt) < Self.emptyFeederReportWindow {
             adfState = .empty
         } else {
-            adfState = nil
+            adfState = .loaded
         }
         let snapshots = jobOrder.reversed().compactMap { jobs[$0]?.snapshot }
         return ESCLStatusSnapshot(state: state, adfState: adfState, jobs: snapshots)
@@ -244,7 +251,7 @@ public actor ESCLScanService {
             finishJob(jobID, state: .canceled, reason: "JobCanceledByUser")
             throw CancellationError()
         }
-        feederReportedEmpty = false
+        feederReportedEmptyAt = nil
         update(jobID) {
             $0.state = .processing
             $0.stateReason = "JobScanning"
@@ -278,7 +285,7 @@ public actor ESCLScanService {
         } catch {
             if let acquisitionError = error as? ScanSnapAcquisitionError,
                acquisitionError == .noDocument || acquisitionError == .noPages {
-                feederReportedEmpty = true
+                feederReportedEmptyAt = Date()
             }
             finishJob(jobID, state: .aborted, reason: "AbortedBySystem")
             return ScanJobOperationResult(succeeded: false, error: error.localizedDescription)

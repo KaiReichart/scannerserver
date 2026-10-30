@@ -103,8 +103,10 @@ result goes.
 - **Streaming.** JPEG jobs return each side from `NextDocument` as soon as it is captured. PDF jobs
   return once the feeder is empty. `NextDocument` waits up to 120 seconds for the next page, then
   returns `503` with `Retry-After: 1` so the client polls again.
-- **Empty feeder.** A job started with no paper is aborted, `NextDocument` returns `404`, and
-  `ScannerStatus` reports `ScannerAdfEmpty` until the next job starts.
+- **Paper detection.** The iX500 cannot report its paper sensor over this protocol without taking
+  over the physical-button session, so an idle scanner always reports `ScannerAdfLoaded` and
+  clients let you start a scan. A job started with no paper is aborted, `NextDocument` returns
+  `404`, and `ScannerStatus` reports `ScannerAdfEmpty` for 15 seconds so the client can show why.
 - **Cancellation.** `DELETE /eSCL/ScanJobs/{id}` stops an active acquisition. Deleting a finished
   job releases it.
 - **Retention.** Pages the client never fetches are held in memory and discarded five minutes
